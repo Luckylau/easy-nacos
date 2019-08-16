@@ -433,6 +433,7 @@ public class ClientWorker {
             }
         });
 
+        //长轮询线程池
         executorService = Executors.newScheduledThreadPool(Runtime.getRuntime().availableProcessors(), new ThreadFactory() {
             @Override
             public Thread newThread(Runnable r) {
@@ -443,6 +444,7 @@ public class ClientWorker {
             }
         });
 
+        //每10ms执行定时任务，将任务分片后用长轮询线程池执行
         executor.scheduleWithFixedDelay(new Runnable() {
             @Override
             public void run() {
@@ -491,6 +493,7 @@ public class ClientWorker {
                     }
                 }
 
+                //首先拿到变化的dataId
                 // check server config
                 List<String> changedGroupKeys = checkUpdateDataIds(cacheDatas, inInitializingCacheList);
 

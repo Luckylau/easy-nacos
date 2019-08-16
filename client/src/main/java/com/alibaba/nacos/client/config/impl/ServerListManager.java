@@ -114,6 +114,7 @@ public class ServerListManager {
         serverAddrsStr = properties.getProperty(PropertyKeyConst.SERVER_ADDR);
         String namespace = properties.getProperty(PropertyKeyConst.NAMESPACE);
         initParam(properties);
+        //支持serverUrls方式，serverAddrsStr:[1.1.1.1:8080,2.2.2.2:8080]
         if (StringUtils.isNotEmpty(serverAddrsStr)) {
             isFixed = true;
             List<String> serverAddrs = new ArrayList<String>();
@@ -135,7 +136,9 @@ public class ServerListManager {
                 name = FIXED_NAME + "-" + getFixedNameSuffix(serverUrls.toArray(new String[serverUrls.size()])) + "-"
                     + namespace;
             }
-        } else {
+        }
+        //支持 http://endpoint:endpointPort/contentPath/serverListName?namespace=namespace 访问
+        else {
             if (StringUtils.isBlank(endpoint)) {
                 throw new NacosException(NacosException.CLIENT_INVALID_PARAM, "endpoint is blank");
             }
@@ -199,12 +202,18 @@ public class ServerListManager {
         return StringUtils.isNotBlank(endpointTmp) ? endpointTmp : "";
     }
 
+    /**
+     * 针对endpoint的模式，定时的从endpoint获取和更新serverUrls
+     * @throws NacosException
+     */
     public synchronized void start() throws NacosException {
 
+        //由代码逻辑看 http://endpoint:endpointPort/contentPath/serverListname?namespace=namespace要继续执行
         if (isStarted || isFixed) {
             return;
         }
 
+        //addressServerUrl的格式：http://endpoint:endpointPort/contentPath/serverListname
         GetServerListTask getServersTask = new GetServerListTask(addressServerUrl);
         for (int i = 0; i < initServerlistRetryTimes && serverUrls.isEmpty(); ++i) {
             getServersTask.run();
@@ -246,6 +255,7 @@ public class ServerListManager {
              * get serverlist from nameserver
              */
             try {
+                //name 值为 endpoint + "-" + namespace 或者 endpoint
                 updateIfChanged(getApacheServerList(url, name));
             } catch (Exception e) {
                 LOGGER.error("[" + name + "][update-serverlist] failed to update serverlist from address server!",
@@ -265,6 +275,7 @@ public class ServerListManager {
         if (newList.equals(serverUrls)) {
             return;
         }
+        //随机取服务地址
         serverUrls = new ArrayList<String>(newList);
         iterator = iterator();
         currentServerAddr = iterator.next();
