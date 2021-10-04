@@ -13,9 +13,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package com.alibaba.nacos.client.config.common;
 
-import com.alibaba.nacos.client.utils.StringUtils;
+import com.alibaba.nacos.common.utils.StringUtils;
 
 /**
  * Synthesize the form of dataId+groupId. Escapes reserved characters in dataId and groupId.
@@ -23,46 +24,63 @@ import com.alibaba.nacos.client.utils.StringUtils;
  * @author Nacos
  */
 public class GroupKey {
-
-    static public String getKey(String dataId, String group) {
-        StringBuilder sb = new StringBuilder();
-        urlEncode(dataId, sb);
-        sb.append('+');
-        urlEncode(group, sb);
-        return sb.toString();
+    
+    private static final char PLUS = '+';
+    
+    private static final char PERCENT = '%';
+    
+    private static final char TWO = '2';
+    
+    private static final char B = 'B';
+    
+    private static final char FIVE = '5';
+    
+    public static String getKey(String dataId, String group) {
+        return getKey(dataId, group, "");
     }
-
-    static public String getKeyTenant(String dataId, String group, String tenant) {
-        StringBuilder sb = new StringBuilder();
-        urlEncode(dataId, sb);
-        sb.append('+');
-        urlEncode(group, sb);
-        if (StringUtils.isNotEmpty(tenant)) {
-            sb.append('+');
-            urlEncode(tenant, sb);
+    
+    public static String getKey(String dataId, String group, String datumStr) {
+        return doGetKey(dataId, group, datumStr);
+    }
+    
+    public static String getKeyTenant(String dataId, String group, String tenant) {
+        return doGetKey(dataId, group, tenant);
+    }
+    
+    private static String doGetKey(String dataId, String group, String datumStr) {
+        if (StringUtils.isBlank(dataId)) {
+            throw new IllegalArgumentException("invalid dataId");
         }
-        return sb.toString();
-    }
-
-    static public String getKey(String dataId, String group, String datumStr) {
+        if (StringUtils.isBlank(group)) {
+            throw new IllegalArgumentException("invalid group");
+        }
         StringBuilder sb = new StringBuilder();
         urlEncode(dataId, sb);
-        sb.append('+');
+        sb.append(PLUS);
         urlEncode(group, sb);
-        sb.append('+');
-        urlEncode(datumStr, sb);
+        if (StringUtils.isNotEmpty(datumStr)) {
+            sb.append(PLUS);
+            urlEncode(datumStr, sb);
+        }
+        
         return sb.toString();
     }
-
-    static public String[] parseKey(String groupKey) {
+    
+    /**
+     * Parse key.
+     *
+     * @param groupKey group key
+     * @return parsed key
+     */
+    public static String[] parseKey(String groupKey) {
         StringBuilder sb = new StringBuilder();
         String dataId = null;
         String group = null;
         String tenant = null;
-
+        
         for (int i = 0; i < groupKey.length(); ++i) {
             char c = groupKey.charAt(i);
-            if ('+' == c) {
+            if (PLUS == c) {
                 if (null == dataId) {
                     dataId = sb.toString();
                     sb.setLength(0);
@@ -72,13 +90,13 @@ public class GroupKey {
                 } else {
                     throw new IllegalArgumentException("invalid groupkey:" + groupKey);
                 }
-            } else if ('%' == c) {
+            } else if (PERCENT == c) {
                 char next = groupKey.charAt(++i);
                 char nextnext = groupKey.charAt(++i);
-                if ('2' == next && 'B' == nextnext) {
-                    sb.append('+');
-                } else if ('2' == next && '5' == nextnext) {
-                    sb.append('%');
+                if (TWO == next && B == nextnext) {
+                    sb.append(PLUS);
+                } else if (TWO == next && FIVE == nextnext) {
+                    sb.append(PERCENT);
                 } else {
                     throw new IllegalArgumentException("invalid groupkey:" + groupKey);
                 }
@@ -86,36 +104,36 @@ public class GroupKey {
                 sb.append(c);
             }
         }
-
-        if (StringUtils.isBlank(group)) {
+        
+        if (group == null) {
             group = sb.toString();
-            if (group.length() == 0) {
-                throw new IllegalArgumentException("invalid groupkey:" + groupKey);
-            }
         } else {
             tenant = sb.toString();
-            if (group.length() == 0) {
-                throw new IllegalArgumentException("invalid groupkey:" + groupKey);
-            }
         }
-
+        
+        if (StringUtils.isBlank(dataId)) {
+            throw new IllegalArgumentException("invalid dataId");
+        }
+        if (StringUtils.isBlank(group)) {
+            throw new IllegalArgumentException("invalid group");
+        }
         return new String[] {dataId, group, tenant};
     }
-
+    
     /**
-     * + -> %2B % -> %25
+     * + -> %2B % -> %25.
      */
     static void urlEncode(String str, StringBuilder sb) {
         for (int idx = 0; idx < str.length(); ++idx) {
             char c = str.charAt(idx);
-            if ('+' == c) {
+            if (PLUS == c) {
                 sb.append("%2B");
-            } else if ('%' == c) {
+            } else if (PERCENT == c) {
                 sb.append("%25");
             } else {
                 sb.append(c);
             }
         }
     }
-
+    
 }

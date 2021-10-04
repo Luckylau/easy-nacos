@@ -13,8 +13,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package com.alibaba.nacos.client.config.utils;
 
+import com.alibaba.nacos.common.utils.IoUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -30,40 +32,51 @@ import java.nio.charset.Charset;
 import java.nio.charset.CharsetDecoder;
 
 /**
- * concurrent disk util;op file with file lock
+ * concurrent disk util;op file with file lock.
  *
  * @author configCenter
  */
 public class ConcurrentDiskUtil {
-
+    
+    private static final Logger LOGGER = LoggerFactory.getLogger(ConcurrentDiskUtil.class);
+    
+    static final int RETRY_COUNT = 10;
+    
     /**
-     * get file content
+     * ms.
+     */
+    static final int SLEEP_BASETIME = 10;
+    
+    private static final String READ_ONLY = "r";
+    
+    private static final String READ_WRITE = "rw";
+    
+    /**
+     * get file content.
      *
      * @param path        file path
      * @param charsetName charsetName
      * @return content
      * @throws IOException IOException
      */
-    public static String getFileContent(String path, String charsetName)
-        throws IOException {
+    public static String getFileContent(String path, String charsetName) throws IOException {
         File file = new File(path);
         return getFileContent(file, charsetName);
     }
-
+    
     /**
-     * get file content
+     * get file content.
      *
      * @param file        file
      * @param charsetName charsetName
      * @return content
      * @throws IOException IOException
      */
-    public static String getFileContent(File file, String charsetName)
-        throws IOException {
+    public static String getFileContent(File file, String charsetName) throws IOException {
         RandomAccessFile fis = null;
         FileLock rlock = null;
         try {
-            fis = new RandomAccessFile(file, "r");
+            fis = new RandomAccessFile(file, READ_ONLY);
             FileChannel fcin = fis.getChannel();
             int i = 0;
             do {
@@ -72,17 +85,14 @@ public class ConcurrentDiskUtil {
                 } catch (Exception e) {
                     ++i;
                     if (i > RETRY_COUNT) {
-                        LOGGER.error("read {} fail;retryed time:{}",
-                            file.getName(), i);
-                        throw new IOException("read " + file.getAbsolutePath()
-                            + " conflict");
+                        LOGGER.error("read {} fail;retryed time:{}", file.getName(), i);
+                        throw new IOException("read " + file.getAbsolutePath() + " conflict");
                     }
                     sleep(SLEEP_BASETIME * i);
-                    LOGGER.warn("read {} conflict;retry time:{}", file.getName(),
-                        i);
+                    LOGGER.warn("read {} conflict;retry time:{}", file.getName(), i);
                 }
             } while (null == rlock);
-            int fileSize = (int)fcin.size();
+            int fileSize = (int) fcin.size();
             ByteBuffer byteBuffer = ByteBuffer.allocate(fileSize);
             fcin.read(byteBuffer);
             byteBuffer.flip();
@@ -93,14 +103,14 @@ public class ConcurrentDiskUtil {
                 rlock = null;
             }
             if (fis != null) {
-                fis.close();
+                IoUtils.closeQuietly(fis);
                 fis = null;
             }
         }
     }
-
+    
     /**
-     * write file content
+     * write file content.
      *
      * @param path        file path
      * @param content     content
@@ -108,14 +118,13 @@ public class ConcurrentDiskUtil {
      * @return whether write ok
      * @throws IOException IOException
      */
-    public static Boolean writeFileContent(String path, String content,
-                                           String charsetName) throws IOException {
+    public static Boolean writeFileContent(String path, String content, String charsetName) throws IOException {
         File file = new File(path);
         return writeFileContent(file, content, charsetName);
     }
-
+    
     /**
-     * write file content
+     * write file content.
      *
      * @param file        file
      * @param content     content
@@ -123,8 +132,7 @@ public class ConcurrentDiskUtil {
      * @return whether write ok
      * @throws IOException IOException
      */
-    public static Boolean writeFileContent(File file, String content,
-                                           String charsetName) throws IOException {
+    public static Boolean writeFileContent(File file, String content, String charsetName) throws IOException {
         if (!file.exists()) {
             boolean isCreateOk = file.createNewFile();
             if (!isCreateOk) {
@@ -135,7 +143,7 @@ public class ConcurrentDiskUtil {
         FileLock lock = null;
         RandomAccessFile raf = null;
         try {
-            raf = new RandomAccessFile(file, "rw");
+            raf = new RandomAccessFile(file, READ_WRITE);
             channel = raf.getChannel();
             int i = 0;
             do {
@@ -144,19 +152,15 @@ public class ConcurrentDiskUtil {
                 } catch (Exception e) {
                     ++i;
                     if (i > RETRY_COUNT) {
-                        LOGGER.error("write {} fail;retryed time:{}",
-                            file.getName(), i);
-                        throw new IOException("write " + file.getAbsolutePath()
-                            + " conflict");
+                        LOGGER.error("write {} fail;retryed time:{}", file.getName(), i);
+                        throw new IOException("write " + file.getAbsolutePath() + " conflict");
                     }
                     sleep(SLEEP_BASETIME * i);
-                    LOGGER.warn("write {} conflict;retry time:{}", file.getName(),
-                        i);
+                    LOGGER.warn("write {} conflict;retry time:{}", file.getName(), i);
                 }
             } while (null == lock);
-
-            ByteBuffer sendBuffer = ByteBuffer.wrap(content
-                .getBytes(charsetName));
+            
+            ByteBuffer sendBuffer = ByteBuffer.wrap(content.getBytes(charsetName));
             while (sendBuffer.hasRemaining()) {
                 channel.write(sendBuffer);
             }
@@ -188,21 +192,20 @@ public class ConcurrentDiskUtil {
                     LOGGER.warn("close wrong", e);
                 }
             }
-
+            
         }
         return true;
     }
-
+    
     /**
-     * transfer ByteBuffer to String
+     * transfer ByteBuffer to String.
      *
      * @param buffer      buffer
      * @param charsetName charsetName
      * @return String
      * @throws IOException IOException
      */
-    public static String byteBufferToString(ByteBuffer buffer,
-                                            String charsetName) throws IOException {
+    public static String byteBufferToString(ByteBuffer buffer, String charsetName) throws IOException {
         Charset charset = null;
         CharsetDecoder decoder = null;
         CharBuffer charBuffer = null;
@@ -211,7 +214,7 @@ public class ConcurrentDiskUtil {
         charBuffer = decoder.decode(buffer.asReadOnlyBuffer());
         return charBuffer.toString();
     }
-
+    
     private static void sleep(int time) {
         try {
             Thread.sleep(time);
@@ -219,11 +222,4 @@ public class ConcurrentDiskUtil {
             LOGGER.warn("sleep wrong", e);
         }
     }
-
-    private static final Logger LOGGER = LoggerFactory.getLogger(ConcurrentDiskUtil.class);
-    static final int RETRY_COUNT = 10;
-    /**
-     * ms
-     */
-    static final int SLEEP_BASETIME = 10;
 }
