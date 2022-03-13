@@ -52,7 +52,9 @@ public class EphemeralClientOperationServiceImpl implements ClientOperationServi
         InstancePublishInfo instanceInfo = getPublishInfo(instance);
         client.addServiceInstance(singleton, instanceInfo);
         client.setLastUpdatedTime();
+        //ClientServiceIndexesManager#onEvent
         NotifyCenter.publishEvent(new ClientOperationEvent.ClientRegisterServiceEvent(singleton, clientId));
+        //NamingMetadataManager#onEvent
         NotifyCenter
                 .publishEvent(new MetadataEvent.InstanceMetadataEvent(singleton, instanceInfo.getMetadataId(), false));
     }

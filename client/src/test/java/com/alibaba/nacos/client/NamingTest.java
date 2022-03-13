@@ -50,6 +50,7 @@ public class NamingTest {
         instance.setMetadata(map);
     
         NamingService namingService = NacosFactory.createNamingService(properties);
+        //注册服务入口
         namingService.registerInstance("nacos.test.1", instance);
         
         ThreadUtils.sleep(5000L);

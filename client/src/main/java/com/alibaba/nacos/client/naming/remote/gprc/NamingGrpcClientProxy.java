@@ -113,6 +113,7 @@ public class NamingGrpcClientProxy extends AbstractNamingClientProxy {
         namingGrpcConnectionEventListener.cacheInstanceForRedo(serviceName, groupName, instance);
         InstanceRequest request = new InstanceRequest(namespaceId, serviceName, groupName,
                 NamingRemoteConstants.REGISTER_INSTANCE, instance);
+        //GrpcRequestAcceptor#request
         requestToServer(request, Response.class);
     }
     

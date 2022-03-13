@@ -69,7 +69,12 @@ public class GrpcRequestAcceptor extends RequestGrpc.RequestImplBase {
         }
         
     }
-    
+
+    /**
+     * grpc服务入口
+     * @param grpcRequest
+     * @param responseObserver
+     */
     @Override
     public void request(Payload grpcRequest, StreamObserver<Payload> responseObserver) {
         
@@ -122,7 +127,7 @@ public class GrpcRequestAcceptor extends RequestGrpc.RequestImplBase {
             return;
         }
         
-        Object parseObj = null;
+        Object parseObj;
         try {
             parseObj = GrpcUtils.parse(grpcRequest);
         } catch (Exception e) {

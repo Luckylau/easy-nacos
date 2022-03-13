@@ -99,6 +99,7 @@ public class NamingGrpcConnectionEventListener implements ConnectionEventListene
      * @param instance    registered instance
      */
     public void cacheInstanceForRedo(String serviceName, String groupName, Instance instance) {
+        //key: groupName@@serviceName
         String key = NamingUtils.getGroupedName(serviceName, groupName);
         registeredInstanceCached.put(key, instance);
     }

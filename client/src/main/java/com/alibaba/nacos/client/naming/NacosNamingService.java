@@ -89,6 +89,7 @@ public class NacosNamingService implements NamingService {
         initLogName(properties);
         
         this.changeNotifier = new InstancesChangeNotifier();
+        //注册InstancesChangeEvent发布者
         NotifyCenter.registerToPublisher(InstancesChangeEvent.class, 16384);
         NotifyCenter.registerSubscriber(changeNotifier);
         this.serviceInfoHolder = new ServiceInfoHolder(namespace, properties);
@@ -142,6 +143,7 @@ public class NacosNamingService implements NamingService {
     @Override
     public void registerInstance(String serviceName, String groupName, Instance instance) throws NacosException {
         NamingUtils.checkInstanceIsLegal(instance);
+        //NamingClientProxyDelegate
         clientProxy.registerService(serviceName, groupName, instance);
     }
     

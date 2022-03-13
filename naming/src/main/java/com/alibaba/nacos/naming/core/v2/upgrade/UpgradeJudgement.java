@@ -99,6 +99,7 @@ public class UpgradeJudgement extends Subscriber<MembersChangeEvent> {
         Boolean upgraded = upgradeStates.isUpgraded();
         upgraded = upgraded != null && upgraded;
         boolean isStandaloneMode = EnvUtil.getStandaloneMode();
+        //如果是standalone
         if (isStandaloneMode || upgraded) {
             useGrpcFeatures.set(true);
             useJraftFeatures.set(true);

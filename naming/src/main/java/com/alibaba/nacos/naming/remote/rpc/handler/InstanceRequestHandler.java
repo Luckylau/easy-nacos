@@ -42,7 +42,14 @@ public class InstanceRequestHandler extends RequestHandler<InstanceRequest, Inst
     public InstanceRequestHandler(EphemeralClientOperationServiceImpl clientOperationService) {
         this.clientOperationService = clientOperationService;
     }
-    
+
+    /**
+     * grpcREGISTER_INSTANCE和DE_REGISTER_INSTANCE
+     * @param request request
+     * @param meta    request meta data
+     * @return
+     * @throws NacosException
+     */
     @Override
     @Secured(action = ActionTypes.WRITE, parser = NamingResourceParser.class)
     public InstanceResponse handle(InstanceRequest request, RequestMeta meta) throws NacosException {
