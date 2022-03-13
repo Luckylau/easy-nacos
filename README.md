@@ -1,14 +1,14 @@
+# Easy-Nacos
 
-<img src="doc/Nacos_Logo.png" width="50%" syt height="50%" />
+## 基于Nacos的2.0.2版本，用于源码学习
 
-# Nacos: Dynamic  *Na*ming and *Co*nfiguration *S*ervice
+### build：
 
-[![Gitter](https://badges.gitter.im/alibaba/nacos.svg)](https://gitter.im/alibaba/nacos?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge)   [![License](https://img.shields.io/badge/license-Apache%202-4EB1BA.svg)](https://www.apache.org/licenses/LICENSE-2.0.html)
-[![Gitter](https://travis-ci.org/alibaba/nacos.svg?branch=master)](https://travis-ci.org/alibaba/nacos)
+`mvn -Prelease-nacos -Dmaven.test.skip=true clean install -U`
 
--------
+## Nacos: Dynamic  *Na*ming and *Co*nfiguration *S*ervice
 
-## What does it do
+### What does it do
 
 Nacos (official site: [nacos.io](https://nacos.io)) is an easy-to-use platform designed for dynamic service discovery and configuration and service management. It helps you to build cloud native applications and microservices platform easily.
 
@@ -32,8 +32,3 @@ Nacos provides four major functions.
 	
     Nacos provides an easy-to-use service dashboard to help you manage your services metadata, configuration, kubernetes DNS, service health and metrics statistics.
 
-
-## Quick Start
-### build：
-
-`mvn -Prelease-nacos -Dmaven.test.skip=true clean install -U`
