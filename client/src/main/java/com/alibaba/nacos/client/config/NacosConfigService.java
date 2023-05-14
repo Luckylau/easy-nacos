@@ -148,7 +148,7 @@ public class NacosConfigService implements ConfigService {
         cr.setTenant(tenant);
         cr.setGroup(group);
         
-        // use local config first
+        // 1. 优先使用本地快照
         String content = LocalConfigInfoProcessor.getFailover(worker.getAgentName(), dataId, group, tenant);
         if (content != null) {
             LOGGER.warn("[{}] [get-config] get failover ok, dataId={}, group={}, tenant={}, config={}",
@@ -163,6 +163,7 @@ public class NacosConfigService implements ConfigService {
         }
         
         try {
+            //本地配置文件不存在，从远程服务器获取配置。当获取配置成功时，LocalConfigInfoProcessor#saveSnapshot
             ConfigResponse response = worker.getServerConfig(dataId, group, tenant, timeoutMs, false);
             cr.setContent(response.getContent());
             cr.setEncryptedDataKey(response.getEncryptedDataKey());
@@ -180,6 +181,7 @@ public class NacosConfigService implements ConfigService {
         
         LOGGER.warn("[{}] [get-config] get snapshot ok, dataId={}, group={}, tenant={}, config={}",
                 worker.getAgentName(), dataId, group, tenant, ContentUtils.truncateContent(content));
+        //远程服务器不可用时，使用本地配置快照做容灾处理。快照会在适当的时机更新，但没有过期机制
         content = LocalConfigInfoProcessor.getSnapshot(worker.getAgentName(), dataId, group, tenant);
         cr.setContent(content);
         String encryptedDataKey = LocalEncryptedDataKeyProcessor

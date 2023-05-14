@@ -112,6 +112,7 @@ public class ClientWorker implements Closeable {
     
     /**
      * groupKey -> cacheData.
+     * groupKey = dataId+group+tenant
      */
     private final AtomicReference<Map<String, CacheData>> cacheMap = new AtomicReference<Map<String, CacheData>>(
             new HashMap<String, CacheData>());
@@ -123,7 +124,10 @@ public class ClientWorker implements Closeable {
     private String uuid = UUID.randomUUID().toString();
     
     private long timeout;
-    
+
+    /**
+     * rpc通信客户端
+     */
     private ConfigTransportClient agent;
     
     private int taskPenaltyTime;
@@ -169,6 +173,7 @@ public class ClientWorker implements Closeable {
                 cache.addListener(listener);
             }
             cache.setSyncWithServer(false);
+            //listenExecutebell.offer(bellItem)
             agent.notifyListenConfig();
         }
         
@@ -572,10 +577,14 @@ public class ClientWorker implements Closeable {
     }
     
     public class ConfigRpcTransportClient extends ConfigTransportClient {
-        
+        /**
+         * 监听执行铃声。实际就是长度为1的阻塞队列
+         */
         private final BlockingQueue<Object> listenExecutebell = new ArrayBlockingQueue<Object>(1);
-        
-        private Object bellItem = new Object();
+        /**
+         * 铃声项，仅作为listenExecutebell的元素
+         */
+        private final Object bellItem = new Object();
         
         private long lastAllSyncTime = System.currentTimeMillis();
         
@@ -640,6 +649,7 @@ public class ClientWorker implements Closeable {
         private void initRpcClientHandler(final RpcClient rpcClientInner) {
             /*
              * Register Config Change /Config ReSync Handler
+             * 注册配置变更通知请求处理器（请求来自于服务端）
              */
             rpcClientInner.registerServerRequestHandler((request) -> {
                 if (request instanceof ConfigChangeNotifyRequest) {
@@ -654,13 +664,14 @@ public class ClientWorker implements Closeable {
                     CacheData cacheData = cacheMap.get().get(groupKey);
                     if (cacheData != null) {
                         cacheData.setSyncWithServer(false);
+                        //发了一个bell，用于去服务端同步信息
                         notifyListenConfig();
                     }
                     return new ConfigChangeNotifyResponse();
                 }
                 return null;
             });
-            
+            //注册客户端配置度量处理器（请求来自服务端）
             rpcClientInner.registerServerRequestHandler((request) -> {
                 if (request instanceof ClientConfigMetricRequest) {
                     ClientConfigMetricResponse response = new ClientConfigMetricResponse();
@@ -669,7 +680,7 @@ public class ClientWorker implements Closeable {
                 }
                 return null;
             });
-            
+            //注册连接监听器
             rpcClientInner.registerConnectionListener(new ConnectionEventListener() {
                 
                 @Override
@@ -696,7 +707,7 @@ public class ClientWorker implements Closeable {
                 }
                 
             });
-            
+            //设置服务器列表工厂
             rpcClientInner.serverListFactory(new ServerListFactory() {
                 @Override
                 public String genNextServer() {
@@ -716,7 +727,7 @@ public class ClientWorker implements Closeable {
                     
                 }
             });
-            
+            //注册服务器列表变更事件订阅者
             NotifyCenter.registerSubscriber(new Subscriber() {
                 @Override
                 public void onEvent(Event event) {
@@ -737,10 +748,16 @@ public class ClientWorker implements Closeable {
                 public void run() {
                     while (!executor.isShutdown() && !executor.isTerminated()) {
                         try {
+                            //这里是一个阻塞队列，如果有数据，直接返回；没有数据则等待5s
+                            //注：当服务端配置变更的时候，会通知客户端（ConfigChangeNotifyRequest），
+                            // 客户端则会调用ConfigRpcTransportClient#notifyListenConfig()，往listenExecutebell添加数据
+                            //具体见ConfigRpcTransportClient#initRpcClientHandler()
                             listenExecutebell.poll(5L, TimeUnit.SECONDS);
                             if (executor.isShutdown() || executor.isTerminated()) {
                                 continue;
                             }
+                            //执行配置变更监听，这里会以grpc的方式将本地缓存的配置的md5发送给服务端进行比较
+                            //若服务端返回的数据不为空，说明有配置发生变更，则再以grpc的方式请求最新的配置
                             executeConfigListen();
                         } catch (Exception e) {
                             LOGGER.error("[ rpc listen execute ] [rpc listen] exception", e);
@@ -767,40 +784,32 @@ public class ClientWorker implements Closeable {
             Map<String, List<CacheData>> listenCachesMap = new HashMap<String, List<CacheData>>(16);
             Map<String, List<CacheData>> removeListenCachesMap = new HashMap<String, List<CacheData>>(16);
             long now = System.currentTimeMillis();
+            //ALL_SYNC_INTERNAL=5分钟，每隔5分钟需要检查所有监听的配置
             boolean needAllSync = now - lastAllSyncTime >= ALL_SYNC_INTERNAL;
             for (CacheData cache : cacheMap.get().values()) {
                 
                 synchronized (cache) {
                     
-                    //check local listeners consistent.
+                    //如果已经和服务器同步了，就检查md5是否一致，不一致就通知监听器
                     if (cache.isSyncWithServer()) {
                         cache.checkListenerMd5();
                         if (!needAllSync) {
                             continue;
                         }
                     }
-                    
+                    //有监听器的CacheData放到listenCachesMap中，没有监听器的CacheData放到removeListenCachesMap中
                     if (!CollectionUtils.isEmpty(cache.getListeners())) {
                         //get listen  config
                         if (!cache.isUseLocalConfigInfo()) {
-                            List<CacheData> cacheDatas = listenCachesMap.get(String.valueOf(cache.getTaskId()));
-                            if (cacheDatas == null) {
-                                cacheDatas = new LinkedList<CacheData>();
-                                listenCachesMap.put(String.valueOf(cache.getTaskId()), cacheDatas);
-                            }
+                            List<CacheData> cacheDatas = listenCachesMap.computeIfAbsent(String.valueOf(cache.getTaskId()), k -> new LinkedList<CacheData>());
                             cacheDatas.add(cache);
                             
                         }
                     } else if (CollectionUtils.isEmpty(cache.getListeners())) {
                         
                         if (!cache.isUseLocalConfigInfo()) {
-                            List<CacheData> cacheDatas = removeListenCachesMap.get(String.valueOf(cache.getTaskId()));
-                            if (cacheDatas == null) {
-                                cacheDatas = new LinkedList<CacheData>();
-                                removeListenCachesMap.put(String.valueOf(cache.getTaskId()), cacheDatas);
-                            }
+                            List<CacheData> cacheDatas = removeListenCachesMap.computeIfAbsent(String.valueOf(cache.getTaskId()), k -> new LinkedList<CacheData>());
                             cacheDatas.add(cache);
-                            
                         }
                     }
                 }
@@ -817,6 +826,7 @@ public class ClientWorker implements Closeable {
                     ConfigBatchListenRequest configChangeListenRequest = buildConfigRequest(listenCaches);
                     configChangeListenRequest.setListen(true);
                     try {
+                        //一个taskId对应一个client
                         RpcClient rpcClient = ensureRpcClient(taskId);
                         ConfigChangeBatchListenResponse configChangeBatchListenResponse = (ConfigChangeBatchListenResponse) requestProxy(
                                 rpcClient, configChangeListenRequest);
@@ -918,6 +928,7 @@ public class ClientWorker implements Closeable {
                 RpcClient rpcClient = RpcClientFactory
                         .createClient(uuid + "_config-" + taskId, getConnectionType(), newLabels);
                 if (rpcClient.isWaitInitiated()) {
+                    //
                     initRpcClientHandler(rpcClient);
                     rpcClient.setTenant(getTenant());
                     rpcClient.clientAbilities(initAbilities());
@@ -1036,7 +1047,7 @@ public class ClientWorker implements Closeable {
             }
             
             Map<String, String> signHeaders = SpasAdapter.getSignHeaders(resourceBuild(request), secretKey);
-            if (signHeaders != null && !signHeaders.isEmpty()) {
+            if (!signHeaders.isEmpty()) {
                 request.putAllHeader(signHeaders);
             }
             JsonObject asJsonObjectTemp = new Gson().toJsonTree(request).getAsJsonObject();
