@@ -170,13 +170,13 @@ public abstract class DumpService {
         TimerContext.start(dumpFileContext);
         try {
             LogUtil.DEFAULT_LOG.warn("DumpService start");
-            
+            //DumpAllProcessor
             Runnable dumpAll = () -> dumpAllTaskMgr.addTask(DumpAllTask.TASK_ID, new DumpAllTask());
-            
+            //DumpAllBetaProcessor
             Runnable dumpAllBeta = () -> dumpAllTaskMgr.addTask(DumpAllBetaTask.TASK_ID, new DumpAllBetaTask());
-            
+            //DumpAllTagProcessor
             Runnable dumpAllTag = () -> dumpAllTaskMgr.addTask(DumpAllTagTask.TASK_ID, new DumpAllTagTask());
-            
+            //清理太久的数据
             Runnable clearConfigHistory = () -> {
                 LOGGER.warn("clearConfigHistory start");
                 if (canExecute()) {
@@ -202,6 +202,7 @@ public abstract class DumpService {
             };
             
             try {
+                //打开快速启动时，当前时间于上次心跳时间小于6小时则增量获取
                 dumpConfigInfo(dumpAllProcessor);
                 
                 // update Beta cache

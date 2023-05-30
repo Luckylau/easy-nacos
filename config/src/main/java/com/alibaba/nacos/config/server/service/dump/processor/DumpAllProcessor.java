@@ -48,9 +48,11 @@ public class DumpAllProcessor implements NacosTaskProcessor {
     
     @Override
     public boolean process(NacosTask task) {
+        //获取最大的id
         long currentMaxId = persistService.findConfigMaxId();
         long lastMaxId = 0;
         while (lastMaxId < currentMaxId) {
+            //分页查询数据
             Page<ConfigInfoWrapper> page = persistService.findAllConfigInfoFragment(lastMaxId, PAGE_SIZE);
             if (page != null && page.getPageItems() != null && !page.getPageItems().isEmpty()) {
                 for (ConfigInfoWrapper cf : page.getPageItems()) {
@@ -67,7 +69,7 @@ public class DumpAllProcessor implements NacosTaskProcessor {
                     if (cf.getDataId().equals(SwitchService.SWITCH_META_DATAID)) {
                         SwitchService.load(cf.getContent());
                     }
-                    
+                    //数据持久化和更新md5，特别是updateMd5
                     boolean result = ConfigCacheService
                             .dump(cf.getDataId(), cf.getGroup(), cf.getTenant(), cf.getContent(), cf.getLastModified(),
                                     cf.getType());

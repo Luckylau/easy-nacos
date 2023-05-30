@@ -482,6 +482,7 @@ public class ConfigCacheService {
         if (cache.md5 == null || !cache.md5.equals(md5)) {
             cache.md5 = md5;
             cache.lastModifiedTs = lastModifiedTs;
+            //数据发生变化后发送事件，LongPollingService关注LocalDataChangeEvent
             NotifyCenter.publishEvent(new LocalDataChangeEvent(groupKey));
         }
     }
