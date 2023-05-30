@@ -174,6 +174,8 @@ public class ConfigController {
         } else {
             // beta publish
             persistService.insertOrUpdateBeta(configInfo, betaIps, srcIp, srcUser, time, false);
+            //DefaultPublisher发布ConfigDataChangeEvent到queue中,如果队列满了，直接执行receiveEvent
+            //notifySubscriber
             ConfigChangePublisher
                     .notifyConfigChange(new ConfigDataChangeEvent(true, dataId, group, tenant, time.getTime()));
         }

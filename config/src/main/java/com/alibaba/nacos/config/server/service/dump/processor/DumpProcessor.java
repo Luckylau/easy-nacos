@@ -68,7 +68,7 @@ public class DumpProcessor implements NacosTaskProcessor {
             build.remove(Objects.isNull(cf));
             build.betaIps(Objects.isNull(cf) ? null : cf.getBetaIps());
             build.content(Objects.isNull(cf) ? null : cf.getContent());
-            
+            //ConfigCacheService.dump
             return DumpConfigHandler.configDump(build.build());
         }
         if (StringUtils.isBlank(tag)) {
