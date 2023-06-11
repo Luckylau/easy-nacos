@@ -101,7 +101,7 @@ public class InstanceController {
         NamingUtils.checkServiceNameFormat(serviceName);
         
         final Instance instance = parseInstance(request);
-        
+        //2.0用InstanceOperatorClientImpl
         getInstanceOperator().registerInstance(namespaceId, serviceName, instance);
         return "ok";
     }

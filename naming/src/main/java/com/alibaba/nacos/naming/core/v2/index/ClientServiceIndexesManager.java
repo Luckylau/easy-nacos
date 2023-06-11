@@ -80,7 +80,7 @@ public class ClientServiceIndexesManager extends SmartSubscriber {
         result.add(ClientOperationEvent.ClientRegisterServiceEvent.class);
         result.add(ClientOperationEvent.ClientDeregisterServiceEvent.class);
         result.add(ClientOperationEvent.ClientSubscribeServiceEvent.class);
-        result.add(ClientOperationEvent.ClientUnsubscribeServiceEvent.class);
+        result.add(ClientOperationEvent.ClientSubscribeServiceEvent.class);
         result.add(ClientEvent.ClientDisconnectEvent.class);
         return result;
     }
@@ -90,6 +90,8 @@ public class ClientServiceIndexesManager extends SmartSubscriber {
         if (event instanceof ClientEvent.ClientDisconnectEvent) {
             handleClientDisconnect((ClientEvent.ClientDisconnectEvent) event);
         } else if (event instanceof ClientOperationEvent) {
+            //ClientRegisterServiceEvent,ClientDeregisterServiceEvent
+            //ClientSubscribeServiceEvent,ClientSubscribeServiceEvent
             handleClientOperation((ClientOperationEvent) event);
         }
     }
@@ -121,7 +123,8 @@ public class ClientServiceIndexesManager extends SmartSubscriber {
     private void addPublisherIndexes(Service service, String clientId) {
         publisherIndexes.computeIfAbsent(service, (key) -> new ConcurrentHashSet<>());
         publisherIndexes.get(service).add(clientId);
-        //DoubleWriteEventListener#onEvent
+        //DoubleWriteEventListener#onEvent,双写是为了兼容1.X
+        //NamingSubscriberServiceV2Impl#onEvent, 推动给客户端
         NotifyCenter.publishEvent(new ServiceEvent.ServiceChangedEvent(service, true));
     }
     

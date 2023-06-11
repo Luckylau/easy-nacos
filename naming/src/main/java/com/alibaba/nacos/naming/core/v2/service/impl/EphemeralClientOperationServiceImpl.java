@@ -48,11 +48,15 @@ public class EphemeralClientOperationServiceImpl implements ClientOperationServi
     @Override
     public void registerInstance(Service service, Instance instance, String clientId) {
         Service singleton = ServiceManager.getInstance().getSingleton(service);
+        //ClientManagerDelegate
         Client client = clientManager.getClient(clientId);
         InstancePublishInfo instanceInfo = getPublishInfo(instance);
+        //其中会发布ClientChangedEvent，DistroClientDataProcessor订阅改事件，调用syncToAllServer，通过distroProtocol.sync(distroKey, DataOperation.CHANGE)
         client.addServiceInstance(singleton, instanceInfo);
         client.setLastUpdatedTime();
         //ClientServiceIndexesManager#onEvent
+        //1.handleClientOperation#addPublisherIndexes
+        //2.发布一个ServiceChangedEvent事件，DoubleWriteEventListener和NamingSubscriberServiceV2Impl订阅该事件
         NotifyCenter.publishEvent(new ClientOperationEvent.ClientRegisterServiceEvent(singleton, clientId));
         //NamingMetadataManager#onEvent
         NotifyCenter

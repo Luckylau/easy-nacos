@@ -100,7 +100,7 @@ public class GrpcRequestAcceptor extends RequestGrpc.RequestImplBase {
             responseObserver.onCompleted();
             return;
         }
-        
+        //获取RequestHandler
         RequestHandler requestHandler = requestHandlerRegistry.getByRequestType(type);
         //no handler found.
         if (requestHandler == null) {

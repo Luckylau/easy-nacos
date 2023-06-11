@@ -60,6 +60,10 @@ public class RequestHandlerRegistry implements ApplicationListener<ContextRefres
     
     @Override
     public void onApplicationEvent(ContextRefreshedEvent event) {
+        //1.spring容器启动完成后，获取RequestHandler的众多实现类
+        // 2.跳过超类RequestHandler
+        // 3.获取需要带有「TpsControl」注解的方法，表示需要对流量Tps控制
+        // 4.将Handler装载到缓存
         Map<String, RequestHandler> beansOfType = event.getApplicationContext().getBeansOfType(RequestHandler.class);
         Collection<RequestHandler> values = beansOfType.values();
         for (RequestHandler requestHandler : values) {

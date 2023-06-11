@@ -36,7 +36,7 @@ public abstract class RequestHandler<T extends Request, S extends Response> {
     private RequestFilters requestFilters;
     
     /**
-     * Handler request.
+     * grpc的 所有请求入口Handler request.
      *
      * @param request request
      * @param meta    request meta data

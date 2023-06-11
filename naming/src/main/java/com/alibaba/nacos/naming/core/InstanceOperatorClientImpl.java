@@ -96,9 +96,11 @@ public class InstanceOperatorClientImpl implements InstanceOperator {
     @Override
     public void registerInstance(String namespaceId, String serviceName, Instance instance) {
         boolean ephemeral = instance.isEphemeral();
+        //服务端伊IpPortBasedClient来把client存在clientManger中
         String clientId = IpPortBasedClient.getClientId(instance.toInetAddr(), ephemeral);
         createIpPortClientIfAbsent(clientId, ephemeral);
         Service service = getService(namespaceId, serviceName, ephemeral);
+        //PersistentClientOperationServiceImpl->JRaftProtocol.write
         clientOperationService.registerInstance(service, instance, clientId);
     }
     

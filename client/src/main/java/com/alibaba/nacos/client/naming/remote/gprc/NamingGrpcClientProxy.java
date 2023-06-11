@@ -110,6 +110,7 @@ public class NamingGrpcClientProxy extends AbstractNamingClientProxy {
     public void registerService(String serviceName, String groupName, Instance instance) throws NacosException {
         NAMING_LOGGER.info("[REGISTER-SERVICE] {} registering service {} with instance {}", namespaceId, serviceName,
                 instance);
+        //缓存当前实例，当与服务端断连后恢复时，可复用
         namingGrpcConnectionEventListener.cacheInstanceForRedo(serviceName, groupName, instance);
         InstanceRequest request = new InstanceRequest(namespaceId, serviceName, groupName,
                 NamingRemoteConstants.REGISTER_INSTANCE, instance);
@@ -214,6 +215,7 @@ public class NamingGrpcClientProxy extends AbstractNamingClientProxy {
             request.putAllHeader(getSecurityHeaders());
             request.putAllHeader(getSpasHeaders(
                     NamingUtils.getGroupedNameOptional(request.getServiceName(), request.getGroupName())));
+            //rpcClient=GrpcSdkClient
             Response response =
                     requestTimeout < 0 ? rpcClient.request(request) : rpcClient.request(request, requestTimeout);
             if (ResponseCode.SUCCESS.getCode() != response.getResultCode()) {

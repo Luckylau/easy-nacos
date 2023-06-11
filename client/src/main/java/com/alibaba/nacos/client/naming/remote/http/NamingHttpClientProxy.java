@@ -145,6 +145,7 @@ public class NamingHttpClientProxy extends AbstractNamingClientProxy {
         NAMING_LOGGER.info("[REGISTER-SERVICE] {} registering service {} with instance: {}", namespaceId, serviceName,
                 instance);
         String groupedServiceName = NamingUtils.getGroupedName(serviceName, groupName);
+        //1.x会有，2.0不走这个
         if (instance.isEphemeral()) {
             BeatInfo beatInfo = beatReactor.buildBeatInfo(groupedServiceName, instance);
             beatReactor.addBeatInfo(groupedServiceName, beatInfo);

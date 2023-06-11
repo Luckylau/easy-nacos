@@ -44,7 +44,8 @@ public class InstanceRequestHandler extends RequestHandler<InstanceRequest, Inst
     }
 
     /**
-     * grpcREGISTER_INSTANCE和DE_REGISTER_INSTANCE
+     * grpc REGISTER_INSTANCE和DE_REGISTER_INSTANCE
+     * 这个@Secured在RequestHandler#handleRequest有处理
      * @param request request
      * @param meta    request meta data
      * @return
