@@ -98,6 +98,7 @@ public abstract class GrpcClient extends RpcClient {
                 .compressorRegistry(CompressorRegistry.getDefaultInstance())
                 .decompressorRegistry(DecompressorRegistry.getDefaultInstance())
                 .maxInboundMessageSize(getInboundMessageSize())
+                //配置keepAlive
                 .keepAliveTime(keepAliveTimeMillis(), TimeUnit.MILLISECONDS).usePlaintext();
         
         ManagedChannel managedChannelTemp = o.build();

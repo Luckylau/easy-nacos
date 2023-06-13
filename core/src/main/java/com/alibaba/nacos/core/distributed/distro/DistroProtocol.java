@@ -64,6 +64,7 @@ public class DistroProtocol {
             isInitialized = true;
             return;
         }
+        //1.数据校验任务
         startVerifyTask();
         startLoadTask();
     }
