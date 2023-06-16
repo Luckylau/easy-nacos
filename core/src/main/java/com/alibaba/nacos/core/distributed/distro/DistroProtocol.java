@@ -186,7 +186,9 @@ public class DistroProtocol {
             Loggers.DISTRO.debug("[DISTRO] Receive verify data type: {}, key: {}", distroData.getType(),
                     distroData.getDistroKey());
         }
+        //根据不同类型获取不同的数据处理器
         String resourceType = distroData.getDistroKey().getResourceType();
+        //DistroConsistencyServiceImpl
         DistroDataProcessor dataProcessor = distroComponentHolder.findDataProcessor(resourceType);
         if (null == dataProcessor) {
             Loggers.DISTRO.warn("[DISTRO] Can't find verify data process for received data {}", resourceType);

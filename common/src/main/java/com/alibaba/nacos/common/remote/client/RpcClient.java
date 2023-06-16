@@ -728,6 +728,7 @@ public abstract class RpcClient implements Closeable {
                     waitReconnect = true;
                     throw new NacosException(NacosException.CLIENT_INVALID_PARAM, "Client not connected.");
                 }
+                // 使用GrpcConnection发送异步请求
                 this.currentConnection.asyncRequest(request, callback);
                 return;
             } catch (Exception e) {
@@ -748,7 +749,7 @@ public abstract class RpcClient implements Closeable {
             retryTimes++;
             
         }
-        
+        // 判断RpcClientStatus 是不是RUNNING状态，若不是则设置其为UNHEALTHY
         if (rpcClientStatus.compareAndSet(RpcClientStatus.RUNNING, RpcClientStatus.UNHEALTHY)) {
             switchServerAsyncOnRequestFail();
         }

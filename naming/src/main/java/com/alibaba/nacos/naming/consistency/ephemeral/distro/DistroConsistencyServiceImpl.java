@@ -168,25 +168,30 @@ public class DistroConsistencyServiceImpl implements EphemeralConsistencyService
     }
     
     /**
+     * 不需要处理的、需要更新的、需要删除的
      * Check sum when receive checksums request.
      *
      * @param checksumMap map of checksum
      * @param server      source server request checksum
      */
     public void onReceiveChecksums(Map<String, String> checksumMap, String server) {
-        
+        // 若已包含此节点的信息，说明正在处理（处理完毕之后会清空）
         if (syncChecksumTasks.containsKey(server)) {
             // Already in process of this server:
             Loggers.DISTRO.warn("sync checksum task already in process with {}", server);
             return;
         }
-        
+        // 将当前要处理的节点信息暂存，表示当前正在处理
         syncChecksumTasks.put(server, "1");
         
         try {
             
             List<String> toUpdateKeys = new ArrayList<>();
             List<String> toRemoveKeys = new ArrayList<>();
+            /**
+             * 判断当前节点中哪些服务需要去远程更新
+             * 需要更新的服务将被添加至toUpdateKeys
+             */
             for (Map.Entry<String, String> entry : checksumMap.entrySet()) {
                 if (distroMapper.responsible(KeyBuilder.getServiceName(entry.getKey()))) {
                     // this key should not be sent from remote server:
@@ -194,19 +199,21 @@ public class DistroConsistencyServiceImpl implements EphemeralConsistencyService
                     // abort the procedure:
                     return;
                 }
-                
+                // 若当前节点不存在此服务，或服务是空的，或服务的实例列表(checksum验证字符串)跟传入的不一致，则标记此服务需要更新
                 if (!dataStore.contains(entry.getKey()) || dataStore.get(entry.getKey()).value == null || !dataStore
                         .get(entry.getKey()).value.getChecksum().equals(entry.getValue())) {
                     toUpdateKeys.add(entry.getKey());
                 }
             }
-            
+            /**
+             * 判断当前节点已有的服务是不是当前接收的请求的来源节点负责处理的，如果是的话，就说明他是最新的不应该被删除
+             */
             for (String key : dataStore.keys()) {
-                
+                // 不是请求方处理的服务就不处理
                 if (!server.equals(distroMapper.mapSrv(KeyBuilder.getServiceName(key)))) {
                     continue;
                 }
-                
+                // 是请求方处理的服务但不在请求列表中，说明此服务在请求方已经被删除了
                 if (!checksumMap.containsKey(key)) {
                     toRemoveKeys.add(key);
                 }
@@ -214,19 +221,21 @@ public class DistroConsistencyServiceImpl implements EphemeralConsistencyService
             
             Loggers.DISTRO
                     .info("to remove keys: {}, to update keys: {}, source: {}", toRemoveKeys, toUpdateKeys, server);
-            
+            // 删掉已经变更的服务
             for (String key : toRemoveKeys) {
+                // 移除服务，并发送变更通知
                 onRemove(key);
             }
             
             if (toUpdateKeys.isEmpty()) {
                 return;
             }
-            
+            // 经过上述流程的处理，目前本机缓存的DataStorage中保留的服务是：在其他节点注册的、服务。
             try {
                 DistroHttpCombinedKey distroKey = new DistroHttpCombinedKey(KeyBuilder.INSTANCE_LIST_KEY_PREFIX,
                         server);
                 distroKey.getActualResourceTypes().addAll(toUpdateKeys);
+                // 更新变更了的服务
                 DistroData remoteData = distroProtocol.queryFromRemote(distroKey);
                 if (null != remoteData) {
                     processData(remoteData.getContent());

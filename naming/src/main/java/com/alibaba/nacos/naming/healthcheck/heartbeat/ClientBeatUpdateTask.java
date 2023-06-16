@@ -36,6 +36,7 @@ public class ClientBeatUpdateTask extends AbstractExecuteTask {
     
     @Override
     public void run() {
+        // 获取当前时间，更新Client和Client下的Instance的最新活跃时间
         long currentTime = System.currentTimeMillis();
         for (InstancePublishInfo each : client.getAllInstancePublishInfo()) {
             ((HealthCheckInstancePublishInfo) each).setLastHeartBeatTime(currentTime);

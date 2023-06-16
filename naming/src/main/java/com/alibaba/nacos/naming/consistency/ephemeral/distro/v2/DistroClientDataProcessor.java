@@ -191,6 +191,7 @@ public class DistroClientDataProcessor extends SmartSubscriber implements Distro
     public boolean processVerifyData(DistroData distroData, String sourceAddress) {
         DistroClientVerifyInfo verifyData = ApplicationUtils.getBean(Serializer.class)
                 .deserialize(distroData.getContent(), DistroClientVerifyInfo.class);
+        // 调用EphemeralIpPortClientManager来验证
         if (clientManager.verifyClient(verifyData.getClientId())) {
             return true;
         }
@@ -237,6 +238,7 @@ public class DistroClientDataProcessor extends SmartSubscriber implements Distro
     @Override
     public List<DistroData> getVerifyData() {
         List<DistroData> result = new LinkedList<>();
+        // 遍历当前节点缓存的所有client
         for (String each : clientManager.allClientId()) {
             Client client = clientManager.getClient(each);
             if (null == client || !client.isEphemeral()) {

@@ -77,11 +77,12 @@ public class GrpcRequestAcceptor extends RequestGrpc.RequestImplBase {
      */
     @Override
     public void request(Payload grpcRequest, StreamObserver<Payload> responseObserver) {
-        
+        // 如果有必要跟踪的话
         traceIfNecessary(grpcRequest, true);
+        // 获取请求对象中的请求类型
         String type = grpcRequest.getMetadata().getType();
-        
-        //server is on starting.
+
+        // 若当前节点还未启动完毕，则直接返回
         if (!ApplicationUtils.isStarted()) {
             Payload payloadResponse = GrpcUtils.convert(
                     buildErrorResponse(NacosException.INVALID_SERVER_STATUS, "Server is starting,please try later."));
@@ -91,9 +92,10 @@ public class GrpcRequestAcceptor extends RequestGrpc.RequestImplBase {
             responseObserver.onCompleted();
             return;
         }
-        
+        // 判断请求是否为ServerCheckRequest
         // server check.
         if (ServerCheckRequest.class.getSimpleName().equals(type)) {
+            // 构建一个ServerCheckResponse作为返回对象，并包装为Payload返回给调用方
             Payload serverCheckResponseP = GrpcUtils.convert(new ServerCheckResponse(CONTEXT_KEY_CONN_ID.get()));
             traceIfNecessary(serverCheckResponseP, false);
             responseObserver.onNext(serverCheckResponseP);
@@ -114,6 +116,7 @@ public class GrpcRequestAcceptor extends RequestGrpc.RequestImplBase {
         }
         
         //check connection status.
+        // 检查连接状态
         String connectionId = CONTEXT_KEY_CONN_ID.get();
         boolean requestValid = connectionManager.checkValid(connectionId);
         if (!requestValid) {
@@ -126,7 +129,7 @@ public class GrpcRequestAcceptor extends RequestGrpc.RequestImplBase {
             responseObserver.onCompleted();
             return;
         }
-        
+        // 解析请求对象
         Object parseObj;
         try {
             parseObj = GrpcUtils.parse(grpcRequest);
@@ -139,7 +142,8 @@ public class GrpcRequestAcceptor extends RequestGrpc.RequestImplBase {
             responseObserver.onCompleted();
             return;
         }
-        
+
+        // 请求对象为空，返回
         if (parseObj == null) {
             Loggers.REMOTE_DIGEST.warn("[{}] Invalid request receive  ,parse request is null", connectionId);
             Payload payloadResponse = GrpcUtils
@@ -148,7 +152,7 @@ public class GrpcRequestAcceptor extends RequestGrpc.RequestImplBase {
             responseObserver.onNext(payloadResponse);
             responseObserver.onCompleted();
         }
-        
+        // 请求对象货不对板，返回
         if (!(parseObj instanceof Request)) {
             Loggers.REMOTE_DIGEST
                     .warn("[{}] Invalid request receive  ,parsed payload is not a request,parseObj={}", connectionId,
@@ -160,7 +164,8 @@ public class GrpcRequestAcceptor extends RequestGrpc.RequestImplBase {
             responseObserver.onCompleted();
             return;
         }
-        
+
+        // 将接收的对象转换为请求对象
         Request request = (Request) parseObj;
         try {
             Connection connection = connectionManager.getConnection(CONTEXT_KEY_CONN_ID.get());

@@ -100,10 +100,11 @@ public class DistroClientTransportAgent implements DistroTransportAgent {
     
     @Override
     public boolean syncVerifyData(DistroData verifyData, String targetServer) {
+        // 若此节点不在当前节点缓存中，直接返回，因为可能下线、或者过期，不需要验证了
         if (isNoExistTarget(targetServer)) {
             return true;
         }
-        // replace target server as self server so that can callback.
+        // 构建请求对象
         verifyData.getDistroKey().setTargetServer(memberManager.getSelf().getAddress());
         DistroDataRequest request = new DistroDataRequest(verifyData, DataOperation.VERIFY);
         Member member = memberManager.find(targetServer);
@@ -122,6 +123,7 @@ public class DistroClientTransportAgent implements DistroTransportAgent {
     
     @Override
     public void syncVerifyData(DistroData verifyData, String targetServer, DistroCallback callback) {
+        //带回调
         if (isNoExistTarget(targetServer)) {
             callback.onSuccess();
             return;

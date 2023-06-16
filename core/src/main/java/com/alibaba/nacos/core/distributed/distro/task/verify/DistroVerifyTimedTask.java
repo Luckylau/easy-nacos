@@ -70,6 +70,7 @@ public class DistroVerifyTimedTask implements Runnable {
                     dataStorage.getClass().getSimpleName());
             return;
         }
+        //v1:DistroDataStorageImpl v2:DistroClientDataProcessor
         List<DistroData> verifyData = dataStorage.getVerifyData();
         if (null == verifyData || verifyData.isEmpty()) {
             return;
