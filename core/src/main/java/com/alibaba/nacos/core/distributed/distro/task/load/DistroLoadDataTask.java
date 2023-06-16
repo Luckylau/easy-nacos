@@ -74,16 +74,20 @@ public class DistroLoadDataTask implements Runnable {
     }
     
     private void load() throws Exception {
+        // 若出自身之外没有其他节点，则休眠1秒，可能其他节点还未启动完毕
         while (memberManager.allMembersWithoutSelf().isEmpty()) {
             Loggers.DISTRO.info("[DISTRO-INIT] waiting server list init...");
             TimeUnit.SECONDS.sleep(1);
         }
+        // 若数据类型为空，说明distroComponentHolder的组件注册器还未初始化完毕（v1版本为DistroHttpRegistry, v2版本为DistroClientComponentRegistry）
         while (distroComponentHolder.getDataStorageTypes().isEmpty()) {
             Loggers.DISTRO.info("[DISTRO-INIT] waiting distro data storage register...");
             TimeUnit.SECONDS.sleep(1);
         }
+        // 加载每个类型的数据
         for (String each : distroComponentHolder.getDataStorageTypes()) {
             if (!loadCompletedMap.containsKey(each) || !loadCompletedMap.get(each)) {
+                // 调用加载方法，并标记已处理
                 loadCompletedMap.put(each, loadAllDataSnapshotFromRemote(each));
             }
         }

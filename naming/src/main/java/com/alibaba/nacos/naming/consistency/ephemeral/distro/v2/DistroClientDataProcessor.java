@@ -156,28 +156,40 @@ public class DistroClientDataProcessor extends SmartSubscriber implements Distro
     
     private void handlerClientSyncData(ClientSyncData clientSyncData) {
         Loggers.DISTRO.info("[Client-Add] Received distro client sync data {}", clientSyncData.getClientId());
+        // 因为是同步数据，因此创建IpPortBasedClient，并缓存
         clientManager.syncClientConnected(clientSyncData.getClientId(), clientSyncData.getAttributes());
         Client client = clientManager.getClient(clientSyncData.getClientId());
+        // 升级此客户端的服务信息
         upgradeClient(client, clientSyncData);
     }
     
     private void upgradeClient(Client client, ClientSyncData clientSyncData) {
+        // 当前处理的远端节点中的数据集合
+        // 获取所有的namespace
         List<String> namespaces = clientSyncData.getNamespaces();
+        // 获取所有的groupNames
         List<String> groupNames = clientSyncData.getGroupNames();
+        // 获取所有的serviceNames
         List<String> serviceNames = clientSyncData.getServiceNames();
+        // 获取所有的instance
         List<InstancePublishInfo> instances = clientSyncData.getInstancePublishInfos();
+        // 已同步的服务集合
         Set<Service> syncedService = new HashSet<>();
         for (int i = 0; i < namespaces.size(); i++) {
+            // 从获取的数据中构建一个Service对象
             Service service = Service.newService(namespaces.get(i), groupNames.get(i), serviceNames.get(i));
             Service singleton = ServiceManager.getInstance().getSingleton(service);
             syncedService.add(singleton);
             InstancePublishInfo instancePublishInfo = instances.get(i);
+            // 判断是否已经包含当前实例
             if (!instancePublishInfo.equals(client.getInstancePublishInfo(singleton))) {
                 client.addServiceInstance(singleton, instancePublishInfo);
+                // 当前节点发布服务注册事件
                 NotifyCenter.publishEvent(
                         new ClientOperationEvent.ClientRegisterServiceEvent(singleton, client.getClientId()));
             }
         }
+        // 若当前client内部已发布的service不在本次同步的列表内，说明已经过时了，要删掉
         for (Service each : client.getAllPublishedService()) {
             if (!syncedService.contains(each)) {
                 client.removeServiceInstance(each);
@@ -201,6 +213,7 @@ public class DistroClientDataProcessor extends SmartSubscriber implements Distro
     
     @Override
     public boolean processSnapshot(DistroData distroData) {
+        // 反序列化获取的DistroData为ClientSyncDatumSnapshot
         ClientSyncDatumSnapshot snapshot = ApplicationUtils.getBean(Serializer.class)
                 .deserialize(distroData.getContent(), ClientSyncDatumSnapshot.class);
         for (ClientSyncData each : snapshot.getClientSyncDataList()) {

@@ -66,6 +66,8 @@ public class DistroProtocol {
         }
         //1.数据校验任务
         startVerifyTask();
+
+        //2.同步数据
         startLoadTask();
     }
     
