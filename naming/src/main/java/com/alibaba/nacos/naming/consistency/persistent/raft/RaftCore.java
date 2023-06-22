@@ -159,7 +159,8 @@ public class RaftCore implements Closeable {
     public void init() throws Exception {
         Loggers.RAFT.info("initializing Raft sub-system");
         final long start = System.currentTimeMillis();
-        
+        //加载数据
+        //notifier=PersistentNotifier
         raftStore.loadDatums(notifier, datums);
         
         setTerm(NumberUtils.toLong(raftStore.loadMeta().getProperty("term"), 0L));
@@ -169,10 +170,11 @@ public class RaftCore implements Closeable {
         initialized = true;
         
         Loggers.RAFT.info("finish to load data from disk, cost: {} ms.", (System.currentTimeMillis() - start));
-        
+        //每500ms执行一次选举任务
         masterTask = GlobalExecutor.registerMasterElection(new MasterElection());
+        //每500ms发送一次心跳
         heartbeatTask = GlobalExecutor.registerHeartbeat(new HeartBeat());
-        
+        //如果服务端都升级了2.0，则老的raft停止
         versionJudgement.registerObserver(isAllNewVersion -> {
             stopWork = isAllNewVersion;
             if (stopWork) {
@@ -476,19 +478,22 @@ public class RaftCore implements Closeable {
                 if (stopWork) {
                     return;
                 }
+                //等待RaftPeerSet#init
                 if (!peers.isReady()) {
                     return;
                 }
                 
                 RaftPeer local = peers.local();
+                //这里获取自己的节点信息，拿自己的leaderDueMs减去500，这个一开始是0～15000的随机数，只有减到负数才进行选举，如果减到负数了，则重置leaderDueMs和heartbeatDueMs，然后就是向其他节点发送选票
                 local.leaderDueMs -= GlobalExecutor.TICK_PERIOD_MS;
                 
                 if (local.leaderDueMs > 0) {
                     return;
                 }
                 
-                // reset timeout
+                // reset timeout 15s+0～5000ms随机数
                 local.resetLeaderDue();
+                // 5s
                 local.resetHeartbeatDue();
                 
                 sendVote();
@@ -503,7 +508,7 @@ public class RaftCore implements Closeable {
             RaftPeer local = peers.get(NetUtils.localServer());
             Loggers.RAFT.info("leader timeout, start voting,leader: {}, term: {}", JacksonUtils.toJson(getLeader()),
                     local.term);
-            
+            //所有的voteFor=null
             peers.reset();
             
             local.term.incrementAndGet();
@@ -563,6 +568,7 @@ public class RaftCore implements Closeable {
         }
         
         RaftPeer local = peers.get(NetUtils.localServer());
+        //如果远端的term小于自己的话
         if (remote.term.get() <= local.term.get()) {
             String msg = "received illegitimate vote" + ", voter-term:" + remote.term + ", votee-term:" + local.term;
             
@@ -573,7 +579,7 @@ public class RaftCore implements Closeable {
             
             return local;
         }
-        
+        //重置时间
         local.resetLeaderDue();
         
         local.state = RaftPeer.State.FOLLOWER;

@@ -80,6 +80,7 @@ public class RaftPeerSet extends MemberChangeListener implements Closeable {
     @PostConstruct
     public void init() {
         NotifyCenter.registerSubscriber(this);
+        //服务端的集群，MemberLookup获取
         changePeers(memberManager.allMembers());
     }
     
@@ -205,6 +206,7 @@ public class RaftPeerSet extends MemberChangeListener implements Closeable {
             
             if (!Objects.equals(leader, peer)) {
                 leader = peer;
+                //RaftListener#onAppliationEvent
                 ApplicationUtils.publishEvent(new LeaderElectFinishedEvent(this, leader, local()));
                 Loggers.RAFT.info("{} has become the LEADER", leader.ip);
             }
