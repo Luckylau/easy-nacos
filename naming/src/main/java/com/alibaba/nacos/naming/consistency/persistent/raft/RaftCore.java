@@ -35,13 +35,7 @@ import com.alibaba.nacos.naming.consistency.persistent.ClusterVersionJudgement;
 import com.alibaba.nacos.naming.consistency.persistent.PersistentNotifier;
 import com.alibaba.nacos.naming.core.Instances;
 import com.alibaba.nacos.naming.core.Service;
-import com.alibaba.nacos.naming.misc.GlobalConfig;
-import com.alibaba.nacos.naming.misc.GlobalExecutor;
-import com.alibaba.nacos.naming.misc.HttpClient;
-import com.alibaba.nacos.naming.misc.Loggers;
-import com.alibaba.nacos.naming.misc.NetUtils;
-import com.alibaba.nacos.naming.misc.SwitchDomain;
-import com.alibaba.nacos.naming.misc.UtilsAndCommons;
+import com.alibaba.nacos.naming.misc.*;
 import com.alibaba.nacos.naming.monitor.MetricsMonitor;
 import com.alibaba.nacos.naming.pojo.Record;
 import com.alibaba.nacos.sys.env.EnvUtil;
@@ -62,16 +56,8 @@ import java.io.UnsupportedEncodingException;
 import java.net.URLDecoder;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.ScheduledFuture;
-import java.util.concurrent.TimeUnit;
+import java.util.*;
+import java.util.concurrent.*;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.zip.GZIPOutputStream;
@@ -216,7 +202,7 @@ public class RaftCore implements Closeable {
             parameters.put("key", key);
             
             final RaftPeer leader = getLeader();
-            
+            //http请求
             raftProxy.proxyPostLarge(leader.ip, API_PUB, params.toString(), parameters);
             return;
         }
@@ -716,8 +702,12 @@ public class RaftCore implements Closeable {
             
         }
     }
-    
+
     /**
+     * Fellower节点接到心跳逻辑
+     * 首先比较term的大小，如果当前term比leader大则抛出异常，因为leader的版本是落后的。
+     * 重置本地的leaderDueMs和heartbeatDueMs，如果leader一直正常维持心跳，那么fellower是不会进行选举的。
+     * 会调用makeLeader方法，这个主要是看本地维护的leader和远程的leader是不是同一个，如果不是则进行更新。
      * Received beat from leader. // TODO split method to multiple smaller method.
      *
      * @param beat beat information from leader
